@@ -30,8 +30,10 @@ def search_enterprise_knowledge(query: str, limit: int = 8):
         results = []
         for res in response.points:
             results.append({
+                 "chunk_id": res.payload.get("chunk_id"),
                 "content": res.payload.get("text", ""),
                 "source": res.payload.get("source", "Unknown"),
+                "source_type": res.payload.get("source_type", "general"),
                 "score": res.score
             })
         

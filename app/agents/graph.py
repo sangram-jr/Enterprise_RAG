@@ -1,3 +1,4 @@
+import logfire
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from app.agents.state import AgentState
@@ -17,12 +18,21 @@ workflow.add_node("responder", generate_node)
 
 # 3. Define the Edges & Routing Logic
 def route_planner(state: AgentState):
-    """
-    Routes the workflow based on the planner's decision.
-    """
-    if state["current_query"] == "CONVERSATIONAL":
-        return "responder"
-    return "retriever"
+    current_query = state["current_query"]
+
+    route = (
+        "responder"
+        if current_query == "CONVERSATIONAL"
+        else "retriever"
+    )
+
+    logfire.info(
+        "Planner routing decision",
+        current_query=current_query,
+        selected_route=route,
+    )
+
+    return route
 
 workflow.set_entry_point("planner")
 

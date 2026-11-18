@@ -9,6 +9,7 @@ from qdrant_client.http import models
 
 from app.config import settings
 from app.services.retrieval.embedding import embed_texts, get_embedding_dim
+from app.services.retrieval.bm25_service import update_bm25_documents
 from app.ingestion.loaders.pdf import parse_pdf
 from app.ingestion.loaders.html import parse_html
 from app.ingestion.loaders.text import parse_text
@@ -23,6 +24,7 @@ PROCESSED_DATA_DIR = "processed_data"
 qdrant_client = QdrantClient(
     url=settings.QDRANT_URL,
     api_key=settings.QDRANT_API_KEY,
+    timeout=120
 )
 
 
@@ -75,31 +77,55 @@ def process_file(file_path: str, filename: str, source_type: str):
 
             # 4. converts document chunks into vectors and stores those vectors + the original text + metadata inside Qdrant vector db.
             with logfire.span("Vectorizing & Indexing"):
+
+                # 1. Generate embeddings
+                print(f"[EMBEDDING START] {filename} | {len(chunks)} chunks")
+
                 embeddings = embed_texts(chunks)
-                # creating a list of Qdrant PointStruct objects(Think of it like a database record).
-                points = [
+
+                print(f"[EMBEDDING DONE] {filename} | {len(embeddings)} vectors")
+
+                # 2. Create Qdrant points
+                points = [  
                     models.PointStruct(
                         id=str(uuid.uuid4()),
                         vector=vector,
                         payload={
+                            "chunk_id": f"{source_type}:{filename}:{index}",
                             "text": chunk,
                             "source": filename,
                             "source_type": source_type,
                         },
                     )
-                    # zip() maps chunk->vector ,  example:Apple is a fruit->vector1
-                    for chunk, vector in zip(chunks, embeddings)
+                    for index, (chunk, vector) in enumerate(zip(chunks, embeddings))
                 ]
 
-                # Upload everything to Qdrant
+                # 3. Upload to Qdrant
+                print(f"[QDRANT UPSERT START] {filename}")
+
                 qdrant_client.upsert(
                     collection_name=settings.QDRANT_COLLECTION,
                     points=points,
+                    wait=True,
                 )
-                logfire.info(f"Indexed {len(points)} points to Qdrant from {filename}.")
 
+                print(f"[QDRANT UPSERT DONE] {filename}")
+
+                # 4. Update BM25
+                update_bm25_documents(
+                    chunks=chunks,
+                    filename=filename,
+                    source_type=source_type,
+                )
+
+                logfire.info(
+                    f"Indexed {len(points)} points to Qdrant from {filename}."
+                )
+
+            return True
         except Exception as e:
             logfire.error(f"Failed to process {filename}: {e}")
+            return False
 
 
 def process_directory(dir_path: str, source_type: str):
@@ -116,13 +142,16 @@ def process_directory(dir_path: str, source_type: str):
             print("================================")
 
             try:
-                process_file(
+                success = process_file(
                     file_path,
                     filename,
                     source_type
                 )
 
-                print(f"SUCCESS: {filename}")
+                if success:
+                    print(f"SUCCESS: {filename}")
+                else:
+                    print(f"FAILED: {filename}")
 
             except Exception as e:
                 print(f"FAILED: {filename}")

@@ -73,9 +73,17 @@ def run_pipeline(golden_dataset: dict, progress_callback=None) -> dict:
                     thought_process = data.get("thought_process") or []
                     sources = data.get("sources") or []
 
-                    sample["actual_response"] = raw_answer[:RESPONSE_TRUNCATE]
+                    sample["actual_response"] = raw_answer
                     sample["actual_contexts"] = sources[:5]
                     sample["actual_tools_called"] = [detect_tool(thought_process)]
+
+                    if not sample["actual_contexts"]:
+                        logfire.warning(
+                            "⚠️ API returned no sources",
+                            question=question,
+                            status=data.get("status"),
+                            thought_process=thought_process,
+                        )
 
                     logfire.info(
                         "✅ Response captured",
@@ -87,13 +95,13 @@ def run_pipeline(golden_dataset: dict, progress_callback=None) -> dict:
                 except requests.exceptions.ConnectionError:
                     logfire.error("❌ Cannot reach FastAPI — is the app running on :8000?")
                     sample["actual_response"] = ""
-                    sample["actual_contexts"] = sample.get("relevant_contexts", [])
+                    sample["actual_contexts"] = []
                     sample["actual_tools_called"] = ["unknown"]
 
                 except Exception as e:
                     logfire.error(f"❌ Query failed: {e}")
                     sample["actual_response"] = ""
-                    sample["actual_contexts"] = sample.get("relevant_contexts", [])
+                    sample["actual_contexts"] = []
                     sample["actual_tools_called"] = ["unknown"]
 
             if progress_callback:

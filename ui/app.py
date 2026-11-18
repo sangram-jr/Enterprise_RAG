@@ -91,6 +91,10 @@ if prompt := st.chat_input("Ask about your documentation..."):
                         payload = {"q": prompt, "thread_id": st.session_state.session_id}
                         response = requests.post(url, json=payload, timeout=60)
                         data = response.json()
+                        if data.get("status") == "error":
+                            raise RuntimeError(
+                                data.get("answer", "Backend processing failed.")
+                            )
                     
                     # Show Reasoning Steps from Backend
                     steps = data.get("thought_process", [])

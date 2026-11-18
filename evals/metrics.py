@@ -140,7 +140,7 @@ def _build_judge():
 
     # Increase the output-token budget for Ragas structured responses.
     if hasattr(llm, "langchain_llm"):
-        llm.langchain_llm.max_tokens = 2048
+        llm.langchain_llm.max_tokens = 4096
         print("Ragas wrapper:", type(llm).__name__)
         print("Underlying model:", type(llm.langchain_llm).__name__)
         print("Configured max_tokens:", llm.langchain_llm.max_tokens)

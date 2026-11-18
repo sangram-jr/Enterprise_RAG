@@ -16,7 +16,10 @@ def _get_ranker() -> Ranker:
         logfire.info("🧠 Initializing FlashRank Model (TinyBERT) locally...")
         try:
             # We use a specific cache directory to avoid permission issues in production
-            _ranker = Ranker(cache_dir="/tmp/flashrank")
+            _ranker = Ranker(
+                model_name="ms-marco-TinyBERT-L-2-v2",
+                cache_dir="/tmp/flashrank",
+            )
         except Exception:
             _ranker = Ranker()
     return _ranker
@@ -36,32 +39,45 @@ def rerank_documents(query: str, documents: list[str], top_n: int = 5) -> list[s
         return []
 
     start_time = time.time()
-    logfire.info(f"📡 [Reranker] Sending {len(documents)} docs to FlashRank Cross-Encoder...")
+
+    logfire.info(
+        "Sending documents to FlashRank",
+        query=query,
+        document_count=len(documents),
+    )
 
     try:
         ranker = _get_ranker()
-        
-        # FlashRank expects a list of dictionaries with 'id' and 'text'
+
         passages = [
             {"id": i, "text": doc}
             for i, doc in enumerate(documents)
         ]
 
-        request = RerankRequest(query=query, passages=passages)
+        request = RerankRequest(
+            query=query,
+            passages=passages
+        )
+
         results = ranker.rerank(request)
-        
-        # Results are returned sorted by highest semantic score first
-        reranked_docs = []
-        for res in results[:top_n]:
-            reranked_docs.append(res['text'])
+
+
+        reranked_docs = [
+            res["text"]
+            for res in results[:top_n]
+        ]
 
         duration = time.time() - start_time
-        top_score = results[0]['score'] if results else 'N/A'
-        logfire.info(f"✅ [Reranker] Done in {duration:.2f}s. Top semantic score: {top_score}")
-        
+
+        logfire.info(
+            "Reranking completed",
+            duration=duration,
+            input_count=len(documents),
+            output_count=len(reranked_docs),
+        )
+
         return reranked_docs
 
     except Exception as e:
-        logfire.error(f"❌ [Reranker] Semantic Reranking Failed: {e}")
-        # Fallback to the original Qdrant order to ensure the user still gets an answer
+        logfire.exception("FlashRank reranking failed")
         return documents[:top_n]
