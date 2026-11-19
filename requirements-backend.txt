@@ -1,0 +1,45 @@
+# Core API
+fastapi
+uvicorn[standard]
+python-dotenv
+requests
+numpy
+pytz
+nest-asyncio
+
+# Gemini
+google-generativeai
+langchain-google-genai
+
+# Vector database and retrieval
+qdrant-client
+flashrank
+rank-bm25
+
+# LangChain and LangGraph
+langchain
+langgraph
+langchain-groq
+langchain-google-vertexai
+langchain-community
+langchain-openai
+pydantic>=2.0.0
+
+# Document parsing
+python-pptx
+python-docx
+pypdf
+beautifulsoup4
+pdfplumber
+
+# Observability
+langsmith
+logfire[fastapi,requests]
+loguru
+
+# Guardrails
+nemoguardrails
+langchain-nvidia-ai-endpoints
+
+# LLM Gateway
+portkey-ai
