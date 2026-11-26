@@ -65,7 +65,14 @@
 
 
 
-streamlit
-requests
-logfire
-python-dotenv
+# streamlit
+# requests
+# logfire
+# python-dotenv
+
+
+
+streamlit==1.65.0
+requests==2.34.2
+python-dotenv==1.2.4
+logfire[requests]==5.1.1
